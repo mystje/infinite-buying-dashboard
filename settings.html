@@ -31,10 +31,12 @@
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 10px; }
   .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; flex: 1; }
   .field label { font-size: .78rem; color: var(--muted); }
-  input[type=text], input[type=number], input[type=password] {
+  input[type=text], input[type=number], input[type=password], select {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--bg); color: var(--text); font-size: .95rem; width: 100%;
   }
+  .strategy-badge { font-size: .75rem; padding: 2px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
   .toggle { display: flex; align-items: center; gap: 8px; font-size: .95rem;
             padding: 8px 0; cursor: pointer; user-select: none; }
   .toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -161,6 +163,12 @@
           <input type="text" id="bt-end" placeholder="YYYY-MM-DD"></div>
         <div class="field"><label>시드 $ (비우면 config)</label>
           <input type="number" id="bt-seed" step="100" placeholder="10000"></div>
+        <div class="field"><label>전략</label>
+          <select id="bt-strategy">
+            <option value="config">종목 설정 따름</option>
+            <option value="infinite">무한매수 v4.0</option>
+            <option value="vr">밸류 리밸런싱</option>
+          </select></div>
         <button class="secondary" id="run-backtest">📈 백테스트 실행</button>
       </div>
     </div>
@@ -273,6 +281,10 @@ function updateBanner() {
 }
 $("f-dry_run").addEventListener("change", updateBanner);
 
+const VR_DEFAULTS = { type: "lump", g: 10, band_pct: 15, cycle_days: 14,
+                      pool_limit_pct: null, contribution: 0, withdrawal: 0,
+                      initial_stock_ratio: 0.5 };
+
 function renderTickers() {
   const wrap = $("tickers");
   wrap.innerHTML = "";
@@ -281,23 +293,31 @@ function renderTickers() {
     div.className = "card";
     div.dataset.ticker = name;
     const star = t.star || {};
+    const vrc = { ...VR_DEFAULTS, ...((cfg.defaults || {}).vr || {}), ...(t.vr || {}) };
+    const strategy = t.strategy === "vr" ? "vr" : "infinite";
     const eff = (k) => t[k] ?? (cfg.defaults || {})[k] ?? CODE_DEFAULTS[k];
     div.innerHTML = `
       <div class="ticker-head">
         <h2>${name}</h2>
-        <label class="toggle" style="padding:0">
-          <input type="checkbox" class="t-enabled" ${t.enabled !== false ? "checked" : ""}> 사용
-        </label>
+        <div style="display:flex;gap:14px;align-items:center">
+          <select class="t-strategy" style="width:auto">
+            <option value="infinite" ${strategy === "infinite" ? "selected" : ""}>무한매수 v4.0</option>
+            <option value="vr" ${strategy === "vr" ? "selected" : ""}>밸류 리밸런싱 (VR)</option>
+          </select>
+          <label class="toggle" style="padding:0">
+            <input type="checkbox" class="t-enabled" ${t.enabled !== false ? "checked" : ""}> 사용
+          </label>
+        </div>
       </div>
       <div class="row">
         <div class="field"><label>시드 (USD)</label>
           <input type="number" class="t-seed" step="1" min="0" value="${t.seed ?? 0}"></div>
         <div class="field"><label>거래소</label>
           <input type="text" class="t-exchange" value="${t.exchange ?? "NASD"}" style="text-transform:uppercase"></div>
-        <div class="field"><label>분할수</label>
+        <div class="field if-inf"><label>분할수</label>
           <input type="number" class="t-divisions" step="1" min="2" value="${eff("divisions")}"></div>
       </div>
-      <div class="row">
+      <div class="row if-inf">
         <div class="field"><label>별% base (별% = base − coef×T)</label>
           <input type="number" class="t-star-base" step="0.5" value="${star.base_pct ?? 15}"></div>
         <div class="field"><label>별% coef</label>
@@ -308,7 +328,39 @@ function renderTickers() {
           <input type="number" class="t-rev-exit" step="1"
                  value="${(t.reverse && t.reverse.exit_pct) ?? ((cfg.defaults||{}).reverse||{}).exit_pct ?? REV_DEFAULTS.exit_pct}"></div>
       </div>
+      <div class="row if-vr">
+        <div class="field"><label>유형</label>
+          <select class="t-vr-type">
+            <option value="deposit" ${vrc.type === "deposit" ? "selected" : ""}>적립식 (한도 75%)</option>
+            <option value="lump" ${vrc.type === "lump" ? "selected" : ""}>거치식 (한도 50%)</option>
+            <option value="withdraw" ${vrc.type === "withdraw" ? "selected" : ""}>인출식 (한도 25%)</option>
+          </select></div>
+        <div class="field"><label>G (V ← V + Pool/G)</label>
+          <input type="number" class="t-vr-g" step="1" min="1" value="${vrc.g}"></div>
+        <div class="field"><label>밴드 ±%</label>
+          <input type="number" class="t-vr-band" step="1" min="1" value="${vrc.band_pct}"></div>
+        <div class="field"><label>리밸런싱 주기 (일)</label>
+          <input type="number" class="t-vr-cycle" step="1" min="1" value="${vrc.cycle_days}"></div>
+      </div>
+      <div class="row if-vr">
+        <div class="field"><label>사이클당 적립금 $ (적립식)</label>
+          <input type="number" class="t-vr-contrib" step="10" min="0" value="${vrc.contribution}"></div>
+        <div class="field"><label>사이클당 인출금 $ (인출식)</label>
+          <input type="number" class="t-vr-withdraw" step="10" min="0" value="${vrc.withdrawal}"></div>
+        <div class="field"><label>Pool 한도 % (비우면 유형 기본)</label>
+          <input type="number" class="t-vr-limit" step="5" min="0" max="100"
+                 value="${vrc.pool_limit_pct ?? ""}" placeholder="유형 기본"></div>
+        <div class="field"><label>최초 주식 매수 비율 (0~1)</label>
+          <input type="number" class="t-vr-ratio" step="0.05" min="0" max="1" value="${vrc.initial_stock_ratio}"></div>
+      </div>
       <button class="danger t-remove" style="font-size:.8rem;padding:5px 10px">이 종목 삭제</button>`;
+    const applyVis = () => {
+      const isVr = div.querySelector(".t-strategy").value === "vr";
+      div.querySelectorAll(".if-inf").forEach(el => { el.style.display = isVr ? "none" : ""; });
+      div.querySelectorAll(".if-vr").forEach(el => { el.style.display = isVr ? "" : "none"; });
+    };
+    div.querySelector(".t-strategy").addEventListener("change", applyVis);
+    applyVis();
     div.querySelector(".t-remove").onclick = () => {
       if (confirm(`${name} 설정을 삭제할까요? (보유 중이면 삭제하지 마세요)`)) {
         delete cfg.tickers[name];
@@ -359,20 +411,38 @@ function collect() {
   };
   for (const div of document.querySelectorAll("#tickers .card")) {
     const name = div.dataset.ticker;
-    out.tickers[name] = {
+    const strategy = div.querySelector(".t-strategy").value;
+    const base = {
       enabled: div.querySelector(".t-enabled").checked,
+      strategy,
       exchange: div.querySelector(".t-exchange").value.trim().toUpperCase(),
       seed: num(div.querySelector(".t-seed"), 0),
-      divisions: num(div.querySelector(".t-divisions"), out.defaults.divisions),
-      star: {
-        base_pct: num(div.querySelector(".t-star-base"), 15),
-        t_coef: num(div.querySelector(".t-star-coef"), 0.75),
-      },
-      remainder_sell_premium_pct: num(div.querySelector(".t-remainder"),
-                                      out.defaults.remainder_sell_premium_pct),
-      reverse: { exit_pct: num(div.querySelector(".t-rev-exit"),
-                               out.defaults.reverse.exit_pct) },
     };
+    if (strategy === "vr") {
+      const limitRaw = div.querySelector(".t-vr-limit").value.trim();
+      out.tickers[name] = { ...base, vr: {
+        type: div.querySelector(".t-vr-type").value,
+        g: num(div.querySelector(".t-vr-g"), VR_DEFAULTS.g),
+        band_pct: num(div.querySelector(".t-vr-band"), VR_DEFAULTS.band_pct),
+        cycle_days: num(div.querySelector(".t-vr-cycle"), VR_DEFAULTS.cycle_days),
+        contribution: num(div.querySelector(".t-vr-contrib"), 0),
+        withdrawal: num(div.querySelector(".t-vr-withdraw"), 0),
+        pool_limit_pct: limitRaw === "" ? null : parseFloat(limitRaw),
+        initial_stock_ratio: num(div.querySelector(".t-vr-ratio"), 0.5),
+      }};
+    } else {
+      out.tickers[name] = { ...base,
+        divisions: num(div.querySelector(".t-divisions"), out.defaults.divisions),
+        star: {
+          base_pct: num(div.querySelector(".t-star-base"), 15),
+          t_coef: num(div.querySelector(".t-star-coef"), 0.75),
+        },
+        remainder_sell_premium_pct: num(div.querySelector(".t-remainder"),
+                                        out.defaults.remainder_sell_premium_pct),
+        reverse: { exit_pct: num(div.querySelector(".t-rev-exit"),
+                                 out.defaults.reverse.exit_pct) },
+      };
+    }
   }
   return out;
 }
@@ -401,8 +471,27 @@ defaults:
 tickers:
 `;
   for (const [name, t] of Object.entries(c.tickers)) {
-    y += `  ${name}:
+    if (t.strategy === "vr") {
+      y += `  ${name}:
     enabled: ${t.enabled}
+    strategy: vr
+    exchange: ${t.exchange}
+    seed: ${t.seed}
+    vr:
+      type: ${t.vr.type}
+      g: ${t.vr.g}
+      band_pct: ${t.vr.band_pct}
+      cycle_days: ${t.vr.cycle_days}
+      contribution: ${t.vr.contribution}
+      withdrawal: ${t.vr.withdrawal}
+      pool_limit_pct: ${t.vr.pool_limit_pct === null ? "null" : t.vr.pool_limit_pct}
+      initial_stock_ratio: ${t.vr.initial_stock_ratio}
+
+`;
+    } else {
+      y += `  ${name}:
+    enabled: ${t.enabled}
+    strategy: infinite
     exchange: ${t.exchange}
     seed: ${t.seed}
     divisions: ${t.divisions}
@@ -414,6 +503,7 @@ tickers:
       exit_pct: ${t.reverse.exit_pct}
 
 `;
+    }
   }
   y += `dashboard:
   repo: "${c.dashboard.repo}"
@@ -484,7 +574,7 @@ $("run-backtest").onclick = async (e) => {
   const btn = e.target;
   btn.disabled = true;
   try {
-    const inputs = { ticker, start, end };
+    const inputs = { ticker, start, end, strategy: $("bt-strategy").value };
     const seed = $("bt-seed").value.trim();
     if (seed) inputs.seed = seed;
     const res = await fetch(`${API}/repos/${REPO}/actions/workflows/backtest.yml/dispatches`, {

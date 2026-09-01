@@ -100,6 +100,33 @@ fetch("data.json?t=" + Date.now())
     for (const t of data.tickers) {
       const card = document.createElement("div");
       card.className = "card";
+
+      if (t.strategy === "vr") {
+        const typeLabel = { deposit: "적립식", lump: "거치식", withdraw: "인출식" }[t.vr_type] || t.vr_type;
+        const s = [];
+        if (t.value_vs_v_pct !== undefined) {
+          const inBand = Math.abs(t.value_vs_v_pct) <= t.band_pct;
+          s.push(`<div class="stat"><div class="k">평가금 vs V (밴드 ±${t.band_pct}%)</div>
+            <div class="v ${cls(t.value_vs_v_pct)}">${fmtPct(t.value_vs_v_pct)}
+            <span style="font-weight:400;font-size:.78rem;color:var(--muted)">${inBand ? "밴드 안" : "밴드 밖!"}</span></div></div>`);
+        }
+        s.push(`<div class="stat"><div class="k">다음 리밸런싱</div><div class="v">${t.next_rebalance || "-"}</div></div>`);
+        if (t.V !== undefined) {
+          s.push(`<div class="stat"><div class="k">V값</div><div class="v">$${t.V.toLocaleString()}</div></div>`);
+          s.push(`<div class="stat"><div class="k">보유 / Pool</div>
+            <div class="v">${t.shares}주 / $${t.pool.toLocaleString()}</div></div>`);
+        }
+        card.innerHTML = `
+          <h2>${t.ticker}
+            <span class="badge">📐 VR · ${typeLabel}</span>
+            ${t.halted ? '<span class="badge halt">중단됨</span>' : ""}
+          </h2>
+          <div class="grid">${s.join("")}</div>
+          ${navChart(t.daily)}`;
+        cards.appendChild(card);
+        continue;
+      }
+
       const stats = [];
       stats.push(`<div class="stat"><div class="k">진행률 (T/${t.divisions})</div><div class="v">${t.T} <span style="font-weight:400;color:var(--muted)">(${t.progress_pct}%)</span></div></div>`);
       stats.push(`<div class="stat"><div class="k">별%</div><div class="v">${fmtPct(t.star_pct)}</div></div>`);

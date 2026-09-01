@@ -87,6 +87,31 @@ fetch("backtest.json?t=" + Date.now())
       const card = document.createElement("div");
       card.className = "card";
       const ranAt = new Date(r.ran_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+
+      if (r.strategy === "vr") {
+        card.innerHTML = `
+          <h2>${r.ticker} <span style="color:var(--accent);font-size:.85rem">📐 VR</span>
+            <span style="font-weight:400;color:var(--muted);font-size:.85rem">${r.period}</span></h2>
+          <div class="ran">실행: ${ranAt} (KST) · ${r.trading_days}거래일 · 시드 $${r.seed.toLocaleString()}</div>
+          ${navChart(r.nav_series)}
+          <div class="grid">
+            <div class="stat"><div class="k">총수익률</div>
+              <div class="v ${cls(r.total_return_pct)}">${fmtPct(r.total_return_pct)}</div></div>
+            <div class="stat"><div class="k">리밸런싱</div><div class="v">${r.rebalances}회</div></div>
+            <div class="stat"><div class="k">매수 / 매도</div>
+              <div class="v">${r.buy_trades} / ${r.sell_trades}회</div></div>
+            <div class="stat"><div class="k">최대 낙폭 (MDD)</div>
+              <div class="v neg">-${r.max_drawdown_pct.toFixed(2)}%</div></div>
+            <div class="stat"><div class="k">종료 상태</div>
+              <div class="v" style="font-size:.9rem">V $${r.final_state.V.toLocaleString()}, ${r.final_state.shares}주</div></div>
+          </div>
+          <details><summary>이벤트 ${r.events.length}건 보기</summary>
+            <ul class="events">${r.events.map(e => `<li>${e}</li>`).join("")}</ul>
+          </details>`;
+        wrap.appendChild(card);
+        continue;
+      }
+
       card.innerHTML = `
         <h2>${r.ticker} <span style="font-weight:400;color:var(--muted);font-size:.85rem">${r.period}</span></h2>
         <div class="ran">실행: ${ranAt} (KST) · ${r.trading_days}거래일 · 시드 $${r.seed.toLocaleString()}</div>
