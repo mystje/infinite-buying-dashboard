@@ -314,6 +314,11 @@ function renderTickers() {
           <input type="number" class="t-seed" step="1" min="0" value="${t.seed ?? 0}"></div>
         <div class="field"><label>거래소</label>
           <input type="text" class="t-exchange" value="${t.exchange ?? "NASD"}" style="text-transform:uppercase"></div>
+        <div class="field"><label>계좌</label>
+          <select class="t-account">
+            <option value="" ${!t.account ? "selected" : ""}>기본 계좌</option>
+            <option value="VR" ${t.account === "VR" ? "selected" : ""}>VR 계좌 (KIS_*_VR)</option>
+          </select></div>
         <div class="field if-inf"><label>분할수</label>
           <input type="number" class="t-divisions" step="1" min="2" value="${eff("divisions")}"></div>
       </div>
@@ -415,6 +420,7 @@ function collect() {
     const base = {
       enabled: div.querySelector(".t-enabled").checked,
       strategy,
+      account: div.querySelector(".t-account").value,
       exchange: div.querySelector(".t-exchange").value.trim().toUpperCase(),
       seed: num(div.querySelector(".t-seed"), 0),
     };
@@ -475,6 +481,7 @@ tickers:
       y += `  ${name}:
     enabled: ${t.enabled}
     strategy: vr
+    account: "${t.account || ""}"
     exchange: ${t.exchange}
     seed: ${t.seed}
     vr:
@@ -492,6 +499,7 @@ tickers:
       y += `  ${name}:
     enabled: ${t.enabled}
     strategy: infinite
+    account: "${t.account || ""}"
     exchange: ${t.exchange}
     seed: ${t.seed}
     divisions: ${t.divisions}
