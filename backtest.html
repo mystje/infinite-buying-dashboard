@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무한매수 v4.0 백테스트</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9; --card: #ffffff; --text: #1a1d21; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --up: #dc2626; --down: #2563eb;
+    --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --card: #1a1f26; --text: #e7eaee; --muted: #9aa3ad;
+      --line: #2a313a; --accent: #60a5fa; --up: #f87171; --down: #60a5fa;
+      --warn: #fbbf24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.6 -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  h1 a { font-size: .85rem; font-weight: 400; margin-left: 10px; color: var(--accent); text-decoration: none; }
+  .sub { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  .ran { color: var(--muted); font-size: .78rem; margin-bottom: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 12px 0; }
+  .stat .k { color: var(--muted); font-size: .78rem; }
+  .stat .v { font-size: 1.05rem; font-weight: 600; }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); font-size: .88rem; }
+  .events { font-size: .84rem; color: var(--muted); margin: 8px 0 0; padding-left: 18px; }
+  .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+  .note { font-size: .78rem; color: var(--muted); margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📈 백테스트 결과 <a href="index.html">← 현황</a><a href="settings.html">⚙️ 설정</a></h1>
+  <div class="sub">최근 10회 실행 결과. 새 백테스트는 설정 페이지에서 실행할 수 있습니다.</div>
+  <div id="runs"></div>
+  <p class="note">체결 가정: LOC는 종가 조건부, 지정가 매도는 고가 도달 시 체결.
+    수수료·환율·슬리피지 미반영이므로 실제 성과는 이보다 낮을 수 있습니다.
+    과거 성과가 미래 수익을 보장하지 않습니다.</p>
+</div>
+<script>
+const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+const cls = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "";
+
+function navChart(series) {
+  if (!series || series.length < 2) return "";
+  const W = 640, H = 150, PAD = 6;
+  const vals = series.map(d => d.nav_pct);
+  const min = Math.min(...vals, 0), max = Math.max(...vals, 0);
+  const span = (max - min) || 1;
+  const x = i => PAD + i * (W - 2 * PAD) / (series.length - 1);
+  const y = v => PAD + (max - v) * (H - 2 * PAD) / span;
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const last = vals[vals.length - 1];
+  const color = last >= 0 ? "var(--up)" : "var(--down)";
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" preserveAspectRatio="none" role="img" aria-label="백테스트 수익률 그래프">
+      <line x1="${PAD}" y1="${y(0)}" x2="${W - PAD}" y2="${y(0)}"
+            stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
+                stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:.72rem">
+      <span>${series[0].d}</span>
+      <span>최고 ${fmtPct(Math.max(...vals))} · 최저 ${fmtPct(Math.min(...vals))}</span>
+      <span>${series[series.length - 1].d}</span>
+    </div>`;
+}
+
+fetch("backtest.json?t=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error("no data"); return r.json(); })
+  .then(runs => {
+    const wrap = document.getElementById("runs");
+    if (!runs.length) throw new Error("empty");
+    for (const r of runs) {
+      const card = document.createElement("div");
+      card.className = "card";
+      const ranAt = new Date(r.ran_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+      card.innerHTML = `
+        <h2>${r.ticker} <span style="font-weight:400;color:var(--muted);font-size:.85rem">${r.period}</span></h2>
+        <div class="ran">실행: ${ranAt} (KST) · ${r.trading_days}거래일 · 시드 $${r.seed.toLocaleString()}</div>
+        ${navChart(r.nav_series)}
+        <div class="grid">
+          <div class="stat"><div class="k">총수익률</div>
+            <div class="v ${cls(r.total_return_pct)}">${fmtPct(r.total_return_pct)}</div></div>
+          <div class="stat"><div class="k">완료 사이클</div>
+            <div class="v">${r.cycles_closed}회 (승 ${r.win_cycles})</div></div>
+          <div class="stat"><div class="k">평균 사이클 수익</div>
+            <div class="v ${cls(r.avg_cycle_profit_pct)}">${fmtPct(r.avg_cycle_profit_pct)}</div></div>
+          <div class="stat"><div class="k">최대 낙폭 (MDD)</div>
+            <div class="v neg">-${r.max_drawdown_pct.toFixed(2)}%</div></div>
+          <div class="stat"><div class="k">리버스모드</div>
+            <div class="v">${r.reverse_days}일</div></div>
+          <div class="stat"><div class="k">종료 상태</div>
+            <div class="v" style="font-size:.9rem">T=${r.final_state.T.toFixed(1)}, ${r.final_state.shares}주</div></div>
+        </div>
+        <details><summary>이벤트 ${r.events.length}건 보기</summary>
+          <ul class="events">${r.events.map(e => `<li>${e}</li>`).join("")}</ul>
+        </details>`;
+      wrap.appendChild(card);
+    }
+  })
+  .catch(() => {
+    document.getElementById("runs").innerHTML =
+      `<div class="card empty">아직 백테스트 결과가 없습니다.<br>
+       <a href="settings.html" style="color:var(--accent)">설정 페이지</a>에서 백테스트를 실행해 보세요.</div>`;
+  });
+</script>
+</body>
+</html>

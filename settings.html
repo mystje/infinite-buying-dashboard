@@ -58,7 +58,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>⚙️ 무한매수 v4.0 설정 <a href="index.html">← 현황으로</a></h1>
+  <h1>⚙️ 무한매수 v4.0 설정 <a href="index.html">← 현황으로</a><a href="backtest.html">📈 백테스트 결과</a></h1>
 
   <!-- ────────────── 토큰 ────────────── -->
   <div class="card" id="token-card">
@@ -143,6 +143,25 @@
         <div class="field"><label>거래소 (NASD/NYSE/AMEX)</label>
           <input type="text" id="new-exchange" placeholder="NASD" style="text-transform:uppercase"></div>
         <button class="secondary" id="add-ticker">종목 추가</button>
+      </div>
+    </div>
+
+    <!-- ────────────── 백테스트 ────────────── -->
+    <div class="card">
+      <h2>백테스트</h2>
+      <p class="hint" style="margin:0 0 10px">
+        현재 저장된 전략 설정으로 과거 데이터를 시뮬레이션합니다.
+        결과는 1~2분 후 <a href="backtest.html" style="color:var(--accent)">백테스트 결과 페이지</a>와 텔레그램으로 옵니다.</p>
+      <div class="row">
+        <div class="field"><label>티커</label>
+          <input type="text" id="bt-ticker" value="SOXL" style="text-transform:uppercase"></div>
+        <div class="field"><label>시작일</label>
+          <input type="text" id="bt-start" value="2022-01-01" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>종료일</label>
+          <input type="text" id="bt-end" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>시드 $ (비우면 config)</label>
+          <input type="number" id="bt-seed" step="100" placeholder="10000"></div>
+        <button class="secondary" id="run-backtest">📈 백테스트 실행</button>
       </div>
     </div>
 
@@ -454,6 +473,35 @@ async function dispatch(workflow, label, btn) {
     btn.disabled = false;
   }
 }
+$("run-backtest").onclick = async (e) => {
+  const ticker = $("bt-ticker").value.trim().toUpperCase();
+  const start = $("bt-start").value.trim();
+  let end = $("bt-end").value.trim();
+  if (!end) end = new Date().toISOString().slice(0, 10);
+  if (!/^[A-Z.]{1,6}$/.test(ticker)) return msg("티커를 확인하세요", "err");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end))
+    return msg("날짜는 YYYY-MM-DD 형식으로 입력하세요", "err");
+  const btn = e.target;
+  btn.disabled = true;
+  try {
+    const inputs = { ticker, start, end };
+    const seed = $("bt-seed").value.trim();
+    if (seed) inputs.seed = seed;
+    const res = await fetch(`${API}/repos/${REPO}/actions/workflows/backtest.yml/dispatches`, {
+      method: "POST",
+      headers: { ...headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: "main", inputs }),
+    });
+    if (res.status === 403) throw new Error("토큰에 Actions: Read and write 권한이 필요합니다");
+    if (!res.ok && res.status !== 204) throw new Error(`실행 실패 (HTTP ${res.status})`);
+    msg(`✅ 백테스트 실행 요청됨 (${ticker} ${start}~${end}) — 1~2분 후 결과 페이지와 텔레그램을 확인하세요.`, "ok");
+  } catch (err) {
+    msg(err.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+};
+
 $("run-trade").onclick = (e) => {
   if (confirm(cfg && cfg.dry_run
       ? "주문 워크플로를 실행할까요? (DRY RUN — 알림만 전송)"
