@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무한매수 v4.0 현황</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9; --card: #ffffff; --text: #1a1d21; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --up: #dc2626; --down: #2563eb;
+    --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --card: #1a1f26; --text: #e7eaee; --muted: #9aa3ad;
+      --line: #2a313a; --accent: #60a5fa; --up: #f87171; --down: #60a5fa;
+      --warn: #fbbf24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .updated { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: .75rem; padding: 2px 8px; border-radius: 999px;
+           background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+  .badge.halt { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .bar > div { height: 100%; background: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 12px; }
+  .stat .k { color: var(--muted); font-size: .78rem; }
+  .stat .v { font-size: 1.05rem; font-weight: 600; }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .88rem; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; border-top: none; }
+  .empty { color: var(--muted); }
+  .error { color: var(--warn); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>무한매수법 v4.0 현황</h1>
+  <div class="updated" id="updated">불러오는 중…</div>
+  <div id="cards"></div>
+</div>
+<script>
+const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+const cls = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "";
+
+fetch("data.json?t=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error("data.json 없음"); return r.json(); })
+  .then(data => {
+    const dt = new Date(data.generated_at);
+    document.getElementById("updated").textContent =
+      "마지막 갱신: " + dt.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + " (KST)";
+    const cards = document.getElementById("cards");
+    for (const t of data.tickers) {
+      const card = document.createElement("div");
+      card.className = "card";
+      const stats = [];
+      stats.push(`<div class="stat"><div class="k">진행률 (T/${t.divisions})</div><div class="v">${t.T} <span style="font-weight:400;color:var(--muted)">(${t.progress_pct}%)</span></div></div>`);
+      stats.push(`<div class="stat"><div class="k">별%</div><div class="v">${fmtPct(t.star_pct)}</div></div>`);
+      if (t.price_vs_avg_pct !== undefined)
+        stats.push(`<div class="stat"><div class="k">현재가 vs 평단</div><div class="v ${cls(t.price_vs_avg_pct)}">${fmtPct(t.price_vs_avg_pct)}</div></div>`);
+      if (t.star_price_gap_pct !== undefined)
+        stats.push(`<div class="stat"><div class="k">별지점까지</div><div class="v">${fmtPct(t.star_price_gap_pct)}</div></div>`);
+      if (t.shares !== undefined) {
+        stats.push(`<div class="stat"><div class="k">보유 / 평단</div><div class="v">${t.shares}주 @ $${t.avg_price.toFixed(2)}</div></div>`);
+        stats.push(`<div class="stat"><div class="k">잔금</div><div class="v">$${t.balance.toFixed(2)}</div></div>`);
+        stats.push(`<div class="stat"><div class="k">누적 실현수익</div><div class="v ${cls(t.realized_profit)}">$${t.realized_profit.toFixed(2)}</div></div>`);
+      }
+      let history = `<p class="empty">완료된 사이클 없음</p>`;
+      if (t.history.length) {
+        const rows = t.history.slice().reverse().map(h =>
+          `<tr><td>${h.cycle}</td><td>${h.closed_at}</td><td class="${cls(h.profit_pct)}">${fmtPct(h.profit_pct)}</td></tr>`).join("");
+        history = `<table><tr><th>사이클</th><th>종료일</th><th>수익률</th></tr>${rows}</table>`;
+      }
+      card.innerHTML = `
+        <h2>${t.ticker}
+          <span class="badge">사이클 ${t.cycle}</span>
+          ${t.halted ? '<span class="badge halt">중단됨</span>' : ""}
+        </h2>
+        <div class="bar"><div style="width:${Math.min(100, t.progress_pct)}%"></div></div>
+        <div class="grid">${stats.join("")}</div>
+        ${history}`;
+      cards.appendChild(card);
+    }
+  })
+  .catch(e => {
+    document.getElementById("updated").innerHTML =
+      `<span class="error">데이터를 불러오지 못했습니다: ${e.message}</span>`;
+  });
+</script>
+</body>
+</html>

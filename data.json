@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-09-01T03:23:42+00:00",
+  "tickers": [
+    {
+      "ticker": "SOXL",
+      "cycle": 1,
+      "T": 0.0,
+      "divisions": 40,
+      "progress_pct": 0.0,
+      "star_pct": 20.0,
+      "halted": false,
+      "history": []
+    },
+    {
+      "ticker": "TQQQ",
+      "cycle": 1,
+      "T": 0.0,
+      "divisions": 40,
+      "progress_pct": 0.0,
+      "star_pct": 15.0,
+      "halted": false,
+      "history": []
+    }
+  ]
+}
