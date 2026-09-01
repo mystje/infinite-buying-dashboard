@@ -116,6 +116,24 @@
       </div>
     </div>
 
+    <!-- ────────────── 리버스모드 ────────────── -->
+    <div class="card">
+      <h2>리버스모드 <span class="hint" style="display:inline">(시드 소진 시 자동 전환)</span></h2>
+      <label class="toggle"><input type="checkbox" id="r-enabled">
+        리버스모드 사용 (끄면 소진 시 자동매매 중단)</label>
+      <div class="row">
+        <div class="field"><label>매도 분모 (매일 보유 1/x 매도)</label>
+          <input type="number" id="r-sell_divisor" step="1" min="2"></div>
+        <div class="field"><label>매수 잔금 비율 (0~1)</label>
+          <input type="number" id="r-buy_balance_ratio" step="0.05" min="0" max="1"></div>
+        <div class="field"><label>별지점 이동평균 일수</label>
+          <input type="number" id="r-star_days" step="1" min="1"></div>
+        <div class="field"><label>복귀 기준 % (종가>평단×(1+x%))</label>
+          <input type="number" id="r-exit_pct" step="1"></div>
+      </div>
+      <p class="hint">복귀 기준은 종목별로도 지정할 수 있습니다 (아래 종목 카드).</p>
+    </div>
+
     <!-- ────────────── 종목별 ────────────── -->
     <div id="tickers"></div>
     <div class="card">
@@ -208,6 +226,8 @@ const DEF_KEYS = ["divisions", "first_buy_premium_pct", "quarter_sell_ratio",
 const CODE_DEFAULTS = { divisions: 40, first_buy_premium_pct: 15, quarter_sell_ratio: 0.25,
                         buy_price_offset: 0.01, first_half_star_ratio: 0.5,
                         remainder_sell_premium_pct: 15 };
+const REV_DEFAULTS = { enabled: true, sell_divisor: 20, buy_balance_ratio: 0.25,
+                       star_days: 5, exit_pct: -15 };
 
 function renderForm() {
   $("f-dry_run").checked = !!cfg.dry_run;
@@ -216,6 +236,12 @@ function renderForm() {
   updateBanner();
   const d = cfg.defaults || {};
   for (const k of DEF_KEYS) $("d-" + k).value = d[k] ?? CODE_DEFAULTS[k];
+  const rev = (d.reverse) || {};
+  $("r-enabled").checked = rev.enabled ?? REV_DEFAULTS.enabled;
+  $("r-sell_divisor").value = rev.sell_divisor ?? REV_DEFAULTS.sell_divisor;
+  $("r-buy_balance_ratio").value = rev.buy_balance_ratio ?? REV_DEFAULTS.buy_balance_ratio;
+  $("r-star_days").value = rev.star_days ?? REV_DEFAULTS.star_days;
+  $("r-exit_pct").value = rev.exit_pct ?? REV_DEFAULTS.exit_pct;
   renderTickers();
 }
 
@@ -259,6 +285,9 @@ function renderTickers() {
           <input type="number" class="t-star-coef" step="0.05" value="${star.t_coef ?? 0.75}"></div>
         <div class="field"><label>나머지 매도 프리미엄 %</label>
           <input type="number" class="t-remainder" step="0.5" value="${eff("remainder_sell_premium_pct")}"></div>
+        <div class="field"><label>리버스 복귀 기준 %</label>
+          <input type="number" class="t-rev-exit" step="1"
+                 value="${(t.reverse && t.reverse.exit_pct) ?? ((cfg.defaults||{}).reverse||{}).exit_pct ?? REV_DEFAULTS.exit_pct}"></div>
       </div>
       <button class="danger t-remove" style="font-size:.8rem;padding:5px 10px">이 종목 삭제</button>`;
     div.querySelector(".t-remove").onclick = () => {
@@ -302,6 +331,13 @@ function collect() {
     },
   };
   for (const k of DEF_KEYS) out.defaults[k] = num($("d-" + k), CODE_DEFAULTS[k]);
+  out.defaults.reverse = {
+    enabled: $("r-enabled").checked,
+    sell_divisor: num($("r-sell_divisor"), REV_DEFAULTS.sell_divisor),
+    buy_balance_ratio: num($("r-buy_balance_ratio"), REV_DEFAULTS.buy_balance_ratio),
+    star_days: num($("r-star_days"), REV_DEFAULTS.star_days),
+    exit_pct: num($("r-exit_pct"), REV_DEFAULTS.exit_pct),
+  };
   for (const div of document.querySelectorAll("#tickers .card")) {
     const name = div.dataset.ticker;
     out.tickers[name] = {
@@ -315,6 +351,8 @@ function collect() {
       },
       remainder_sell_premium_pct: num(div.querySelector(".t-remainder"),
                                       out.defaults.remainder_sell_premium_pct),
+      reverse: { exit_pct: num(div.querySelector(".t-rev-exit"),
+                               out.defaults.reverse.exit_pct) },
     };
   }
   return out;
@@ -334,6 +372,12 @@ defaults:
   buy_price_offset: ${c.defaults.buy_price_offset}
   first_half_star_ratio: ${c.defaults.first_half_star_ratio}
   remainder_sell_premium_pct: ${c.defaults.remainder_sell_premium_pct}
+  reverse:
+    enabled: ${c.defaults.reverse.enabled}
+    sell_divisor: ${c.defaults.reverse.sell_divisor}
+    buy_balance_ratio: ${c.defaults.reverse.buy_balance_ratio}
+    star_days: ${c.defaults.reverse.star_days}
+    exit_pct: ${c.defaults.reverse.exit_pct}
 
 tickers:
 `;
@@ -347,6 +391,8 @@ tickers:
       base_pct: ${t.star.base_pct}
       t_coef: ${t.star.t_coef}
     remainder_sell_premium_pct: ${t.remainder_sell_premium_pct}
+    reverse:
+      exit_pct: ${t.reverse.exit_pct}
 
 `;
   }

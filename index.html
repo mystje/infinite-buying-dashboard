@@ -58,6 +58,38 @@
 const fmtPct = (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%";
 const cls = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "";
 
+// 일별 NAV(%) 라인 차트 (inline SVG)
+function navChart(daily) {
+  if (!daily || daily.length < 2) return "";
+  const W = 640, H = 120, PAD = 6;
+  const vals = daily.map(d => d.nav_pct);
+  const min = Math.min(...vals, 0), max = Math.max(...vals, 0);
+  const span = (max - min) || 1;
+  const x = i => PAD + i * (W - 2 * PAD) / (daily.length - 1);
+  const y = v => PAD + (max - v) * (H - 2 * PAD) / span;
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const last = vals[vals.length - 1];
+  const color = last >= 0 ? "var(--up)" : "var(--down)";
+  const zero = y(0);
+  const first = daily[0].d, lastD = daily[daily.length - 1].d;
+  return `
+    <div style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span class="k" style="color:var(--muted);font-size:.78rem">사이클 수익률 추이 (시드 대비)</span>
+        <span class="${cls(last)}" style="font-weight:600">${fmtPct(last)}</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" preserveAspectRatio="none" role="img" aria-label="일별 수익률 그래프">
+        <line x1="${PAD}" y1="${zero}" x2="${W - PAD}" y2="${zero}"
+              stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+        <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:.72rem">
+        <span>${first}</span><span>최고 ${fmtPct(Math.max(...vals))} · 최저 ${fmtPct(Math.min(...vals))}</span><span>${lastD}</span>
+      </div>
+    </div>`;
+}
+
 fetch("data.json?t=" + Date.now())
   .then(r => { if (!r.ok) throw new Error("data.json 없음"); return r.json(); })
   .then(data => {
@@ -89,10 +121,12 @@ fetch("data.json?t=" + Date.now())
       card.innerHTML = `
         <h2>${t.ticker}
           <span class="badge">사이클 ${t.cycle}</span>
+          ${t.mode === "reverse" ? '<span class="badge halt">🔄 리버스</span>' : ""}
           ${t.halted ? '<span class="badge halt">중단됨</span>' : ""}
         </h2>
         <div class="bar"><div style="width:${Math.min(100, t.progress_pct)}%"></div></div>
         <div class="grid">${stats.join("")}</div>
+        ${navChart(t.daily)}
         ${history}`;
       cards.appendChild(card);
     }
