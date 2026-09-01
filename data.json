@@ -1,24 +1,55 @@
 {
-  "generated_at": "2026-09-01T03:23:42+00:00",
+  "generated_at": "2026-09-01T05:47:57+00:00",
   "tickers": [
     {
       "ticker": "SOXL",
+      "strategy": "infinite",
       "cycle": 1,
       "T": 0.0,
       "divisions": 40,
       "progress_pct": 0.0,
       "star_pct": 20.0,
       "halted": false,
+      "mode": "normal",
+      "daily": [
+        {
+          "d": "2026-09-01",
+          "nav_pct": 0.0
+        }
+      ],
       "history": []
     },
     {
       "ticker": "TQQQ",
+      "strategy": "infinite",
       "cycle": 1,
       "T": 0.0,
       "divisions": 40,
       "progress_pct": 0.0,
       "star_pct": 15.0,
       "halted": false,
+      "mode": "normal",
+      "daily": [
+        {
+          "d": "2026-09-01",
+          "nav_pct": 0.0
+        }
+      ],
+      "history": []
+    },
+    {
+      "ticker": "QLD",
+      "strategy": "vr",
+      "halted": false,
+      "band_pct": 15.0,
+      "vr_type": "lump",
+      "next_rebalance": null,
+      "daily": [
+        {
+          "d": "2026-09-01",
+          "nav_pct": 0.0
+        }
+      ],
       "history": []
     }
   ]
