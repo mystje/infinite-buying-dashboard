@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-22T23:42:15+00:00",
+  "generated_at": "2026-09-23T00:50:44+00:00",
   "tickers": [
     {
       "ticker": "SOXL",
@@ -79,11 +79,15 @@
         {
           "d": "2026-09-22",
           "nav_pct": 12.21
+        },
+        {
+          "d": "2026-09-23",
+          "nav_pct": 12.16
         }
       ],
       "history": [],
-      "price_vs_avg_pct": 34.6,
-      "star_price_gap_pct": -10.85
+      "price_vs_avg_pct": 34.03,
+      "star_price_gap_pct": -10.47
     },
     {
       "ticker": "TQQQ",
@@ -163,11 +167,15 @@
         {
           "d": "2026-09-22",
           "nav_pct": 0.81
+        },
+        {
+          "d": "2026-09-23",
+          "nav_pct": 0.81
         }
       ],
       "history": [],
-      "price_vs_avg_pct": 0.26,
-      "star_price_gap_pct": 14.7
+      "price_vs_avg_pct": 0.0,
+      "star_price_gap_pct": 14.99
     },
     {
       "ticker": "QLD",
@@ -243,6 +251,10 @@
         },
         {
           "d": "2026-09-22",
+          "nav_pct": 0.0
+        },
+        {
+          "d": "2026-09-23",
           "nav_pct": 0.0
         }
       ],
