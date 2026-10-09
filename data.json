@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T01:13:40+00:00",
+  "generated_at": "2026-10-09T01:21:16+00:00",
   "tickers": [
     {
       "ticker": "SOXL",
@@ -123,6 +123,10 @@
         {
           "d": "2026-10-07",
           "nav_pct": 0.05
+        },
+        {
+          "d": "2026-10-08",
+          "nav_pct": -0.11
         }
       ],
       "history": [
@@ -132,17 +136,17 @@
           "profit_pct": 2.66
         }
       ],
-      "price_vs_avg_pct": 3.4,
-      "star_price_gap_pct": 15.09
+      "price_vs_avg_pct": -7.27,
+      "star_price_gap_pct": 28.33
     },
     {
       "ticker": "TQQQ",
       "strategy": "infinite",
       "cycle": 1,
-      "T": 3.95,
+      "T": 4.95,
       "divisions": 40,
-      "progress_pct": 9.9,
-      "star_pct": 12.04,
+      "progress_pct": 12.4,
+      "star_pct": 11.29,
       "halted": false,
       "mode": "normal",
       "daily": [
@@ -257,11 +261,15 @@
         {
           "d": "2026-10-07",
           "nav_pct": 2.74
+        },
+        {
+          "d": "2026-10-08",
+          "nav_pct": 2.43
         }
       ],
       "history": [],
-      "price_vs_avg_pct": 3.43,
-      "star_price_gap_pct": 8.32
+      "price_vs_avg_pct": -0.62,
+      "star_price_gap_pct": 11.99
     },
     {
       "ticker": "QLD",
@@ -381,6 +389,10 @@
         },
         {
           "d": "2026-10-07",
+          "nav_pct": 0.0
+        },
+        {
+          "d": "2026-10-08",
           "nav_pct": 0.0
         }
       ],
