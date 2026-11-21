@@ -190,9 +190,11 @@
         <button class="secondary" id="run-trade">▶ 지금 주문 실행</button>
         <button class="secondary" id="run-reconcile">🧾 지금 정산 실행</button>
         <button class="secondary" id="run-history">🔎 증권사 주문내역 조회</button>
+        <button class="secondary" id="run-dashboard">🖥️ 대시보드 지금 발행</button>
       </div>
       <p class="hint">주문내역 조회: 최근 4일(한국시간 주문일) 주문의 체결·미체결·거부 사유와 USD 주문가능금액을
-        텔레그램으로 보냅니다 (조회만, 주문·상태 변경 없음).</p>
+        텔레그램으로 보냅니다 (조회만, 주문·상태 변경 없음).
+        대시보드 지금 발행: 정산 없이 최신 시세·화면으로 이 대시보드를 다시 올립니다 (1~2분 후 새로고침).</p>
       <p class="hint">저장하면 비공개 리포의 config/settings.yaml에 커밋되고, 다음 실행부터 적용됩니다.
         시드 변경은 새 사이클(보유 0주)이면 즉시, 진행 중이면 다음 사이클부터 반영됩니다.</p>
     </div>
@@ -576,7 +578,8 @@ $("save").onclick = async () => {
 };
 
 // ─────────────────────────────── 수동 실행
-async function dispatch(workflow, label, btn, inputs = { force: "true" }) {
+async function dispatch(workflow, label, btn, inputs = { force: "true" },
+                        done = "결과는 텔레그램으로 옵니다 (1~2분).") {
   btn.disabled = true;
   try {
     const res = await fetch(`${API}/repos/${REPO}/actions/workflows/${workflow}/dispatches`, {
@@ -586,7 +589,7 @@ async function dispatch(workflow, label, btn, inputs = { force: "true" }) {
     });
     if (res.status === 403) throw new Error("토큰에 Actions: Read and write 권한이 필요합니다");
     if (!res.ok && res.status !== 204) throw new Error(`실행 실패 (HTTP ${res.status})`);
-    msg(`✅ ${label} 실행 요청됨 — 결과는 텔레그램으로 옵니다 (1~2분).`, "ok");
+    msg(`✅ ${label} 실행 요청됨 — ${done}`, "ok");
   } catch (e) {
     msg(e.message, "err");
   } finally {
@@ -629,6 +632,9 @@ $("run-trade").onclick = (e) => {
     dispatch("trade.yml", "주문", e.target);
 };
 $("run-reconcile").onclick = (e) => dispatch("reconcile.yml", "정산", e.target);
+$("run-dashboard").onclick = (e) =>
+  dispatch("dashboard.yml", "대시보드 발행", e.target, {},
+           "1~2분 후 이 페이지를 새로고침(Ctrl+F5)하면 반영됩니다.");
 $("run-history").onclick = (e) => {
   const kst = (d) => new Date(Date.now() + 9 * 3600e3 - d * 86400e3).toISOString().slice(0, 10);
   dispatch("order-history.yml", "주문내역 조회", e.target, { start: kst(3), end: kst(0) });
