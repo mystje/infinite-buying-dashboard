@@ -113,9 +113,18 @@
           <input type="number" id="d-buy_price_offset" step="0.01"></div>
         <div class="field"><label>전반전 별지점 매수 비중 (0~1)</label>
           <input type="number" id="d-first_half_star_ratio" step="0.05" min="0" max="1"></div>
-        <div class="field"><label>나머지 매도 프리미엄 %</label>
+        <div class="field"><label>나머지 3/4 지정가 % (평단 기준)</label>
           <input type="number" id="d-remainder_sell_premium_pct" step="0.5"></div>
       </div>
+      <div class="row">
+        <div class="field"><label>매수가 상한 % (현재가 기준, 0=끔)</label>
+          <input type="number" id="d-buy_price_cap_pct" step="0.5" min="0" max="19.5"></div>
+        <div class="field"><label>아래 추가매수 단계 수 (0=끔)</label>
+          <input type="number" id="d-ladder_steps" step="1" min="0" max="30"></div>
+      </div>
+      <p class="hint">매수가 상한: 증권사는 현재가 +20%를 넘는 매수가를 거부하므로, LOC 매수가를
+        min(규칙 가격, 현재가×(1+x%))로 내고 장중에 주가가 오르면 다시 올려 재주문합니다 (원문의 "큰수 매수").
+        아래 추가매수: 큰 하락 대비 1주씩, k번째 가격 = 1회매수액 ÷ (기본수량+k).</p>
     </div>
 
     <!-- ────────────── 리버스모드 ────────────── -->
@@ -124,7 +133,7 @@
       <label class="toggle"><input type="checkbox" id="r-enabled">
         리버스모드 사용 (끄면 소진 시 자동매매 중단)</label>
       <div class="row">
-        <div class="field"><label>매도 분모 (매일 보유 1/x 매도)</label>
+        <div class="field"><label>매도 분모 기본값 (매일 보유 1/x 매도)</label>
           <input type="number" id="r-sell_divisor" step="1" min="2"></div>
         <div class="field"><label>매수 잔금 비율 (0~1)</label>
           <input type="number" id="r-buy_balance_ratio" step="0.05" min="0" max="1"></div>
@@ -133,7 +142,8 @@
         <div class="field"><label>복귀 기준 % (종가>평단×(1+x%))</label>
           <input type="number" id="r-exit_pct" step="1"></div>
       </div>
-      <p class="hint">복귀 기준은 종목별로도 지정할 수 있습니다 (아래 종목 카드).</p>
+      <p class="hint">V4.0: 20분할은 1/10, 40분할은 1/20 매도 (매도 체결 시 T×0.9 / ×0.95).
+        매도 분모와 복귀 기준은 종목별로도 지정할 수 있습니다 (아래 종목 카드).</p>
     </div>
 
     <!-- ────────────── 종목별 ────────────── -->
@@ -179,7 +189,10 @@
         <button id="save">💾 설정 저장 (커밋)</button>
         <button class="secondary" id="run-trade">▶ 지금 주문 실행</button>
         <button class="secondary" id="run-reconcile">🧾 지금 정산 실행</button>
+        <button class="secondary" id="run-history">🔎 증권사 주문내역 조회</button>
       </div>
+      <p class="hint">주문내역 조회: 최근 4일(한국시간 주문일) 주문의 체결·미체결·거부 사유와 USD 주문가능금액을
+        텔레그램으로 보냅니다 (조회만, 주문·상태 변경 없음).</p>
       <p class="hint">저장하면 비공개 리포의 config/settings.yaml에 커밋되고, 다음 실행부터 적용됩니다.
         시드 변경은 새 사이클(보유 0주)이면 즉시, 진행 중이면 다음 사이클부터 반영됩니다.</p>
     </div>
@@ -249,10 +262,11 @@ async function loadSettings() {
 
 // ─────────────────────────────── 폼 렌더
 const DEF_KEYS = ["divisions", "first_buy_premium_pct", "quarter_sell_ratio",
-                  "buy_price_offset", "first_half_star_ratio", "remainder_sell_premium_pct"];
+                  "buy_price_offset", "first_half_star_ratio", "remainder_sell_premium_pct",
+                  "buy_price_cap_pct", "ladder_steps"];
 const CODE_DEFAULTS = { divisions: 40, first_buy_premium_pct: 15, quarter_sell_ratio: 0.25,
                         buy_price_offset: 0.01, first_half_star_ratio: 0.5,
-                        remainder_sell_premium_pct: 15 };
+                        remainder_sell_premium_pct: 15, buy_price_cap_pct: 18, ladder_steps: 8 };
 const REV_DEFAULTS = { enabled: true, sell_divisor: 20, buy_balance_ratio: 0.25,
                        star_days: 5, exit_pct: -15 };
 
@@ -327,8 +341,11 @@ function renderTickers() {
           <input type="number" class="t-star-base" step="0.5" value="${star.base_pct ?? 15}"></div>
         <div class="field"><label>별% coef</label>
           <input type="number" class="t-star-coef" step="0.05" value="${star.t_coef ?? 0.75}"></div>
-        <div class="field"><label>나머지 매도 프리미엄 %</label>
+        <div class="field"><label>나머지 3/4 지정가 % (평단 기준)</label>
           <input type="number" class="t-remainder" step="0.5" value="${eff("remainder_sell_premium_pct")}"></div>
+        <div class="field"><label>리버스 매도 분모 (20분할 10 / 40분할 20)</label>
+          <input type="number" class="t-rev-div" step="1" min="2"
+                 value="${(t.reverse && t.reverse.sell_divisor) ?? ((cfg.defaults||{}).reverse||{}).sell_divisor ?? REV_DEFAULTS.sell_divisor}"></div>
         <div class="field"><label>리버스 복귀 기준 %</label>
           <input type="number" class="t-rev-exit" step="1"
                  value="${(t.reverse && t.reverse.exit_pct) ?? ((cfg.defaults||{}).reverse||{}).exit_pct ?? REV_DEFAULTS.exit_pct}"></div>
@@ -446,7 +463,9 @@ function collect() {
         remainder_sell_premium_pct: num(div.querySelector(".t-remainder"),
                                         out.defaults.remainder_sell_premium_pct),
         reverse: { exit_pct: num(div.querySelector(".t-rev-exit"),
-                                 out.defaults.reverse.exit_pct) },
+                                 out.defaults.reverse.exit_pct),
+                   sell_divisor: num(div.querySelector(".t-rev-div"),
+                                     out.defaults.reverse.sell_divisor) },
       };
     }
   }
@@ -467,6 +486,8 @@ defaults:
   buy_price_offset: ${c.defaults.buy_price_offset}
   first_half_star_ratio: ${c.defaults.first_half_star_ratio}
   remainder_sell_premium_pct: ${c.defaults.remainder_sell_premium_pct}
+  buy_price_cap_pct: ${c.defaults.buy_price_cap_pct}
+  ladder_steps: ${c.defaults.ladder_steps}
   reverse:
     enabled: ${c.defaults.reverse.enabled}
     sell_divisor: ${c.defaults.reverse.sell_divisor}
@@ -509,6 +530,7 @@ tickers:
     remainder_sell_premium_pct: ${t.remainder_sell_premium_pct}
     reverse:
       exit_pct: ${t.reverse.exit_pct}
+      sell_divisor: ${t.reverse.sell_divisor}
 
 `;
     }
@@ -554,13 +576,13 @@ $("save").onclick = async () => {
 };
 
 // ─────────────────────────────── 수동 실행
-async function dispatch(workflow, label, btn) {
+async function dispatch(workflow, label, btn, inputs = { force: "true" }) {
   btn.disabled = true;
   try {
     const res = await fetch(`${API}/repos/${REPO}/actions/workflows/${workflow}/dispatches`, {
       method: "POST",
       headers: { ...headers(), "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: "main", inputs: { force: "true" } }),
+      body: JSON.stringify({ ref: "main", inputs }),
     });
     if (res.status === 403) throw new Error("토큰에 Actions: Read and write 권한이 필요합니다");
     if (!res.ok && res.status !== 204) throw new Error(`실행 실패 (HTTP ${res.status})`);
@@ -607,6 +629,10 @@ $("run-trade").onclick = (e) => {
     dispatch("trade.yml", "주문", e.target);
 };
 $("run-reconcile").onclick = (e) => dispatch("reconcile.yml", "정산", e.target);
+$("run-history").onclick = (e) => {
+  const kst = (d) => new Date(Date.now() + 9 * 3600e3 - d * 86400e3).toISOString().slice(0, 10);
+  dispatch("order-history.yml", "주문내역 조회", e.target, { start: kst(3), end: kst(0) });
+};
 
 // ─────────────────────────────── init
 refreshTokenStatus();
