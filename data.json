@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-11-25T04:31:09+00:00",
+  "generated_at": "2026-11-26T03:44:34+00:00",
   "tickers": [
     {
       "ticker": "SOXL",
       "strategy": "infinite",
       "cycle": 2,
-      "T": 5.0,
+      "T": 6.0,
       "divisions": 20,
-      "progress_pct": 25.0,
-      "star_pct": 10.0,
+      "progress_pct": 30.0,
+      "star_pct": 8.0,
       "halted": false,
       "mode": "normal",
       "daily": [
@@ -259,6 +259,10 @@
         {
           "d": "2026-11-24",
           "nav_pct": -7.27
+        },
+        {
+          "d": "2026-11-25",
+          "nav_pct": -7.51
         }
       ],
       "history": [
@@ -268,17 +272,17 @@
           "profit_pct": 2.66
         }
       ],
-      "price_vs_avg_pct": -34.67,
-      "star_price_gap_pct": 68.37
+      "price_vs_avg_pct": -29.15,
+      "star_price_gap_pct": 52.44
     },
     {
       "ticker": "TQQQ",
       "strategy": "infinite",
       "cycle": 1,
-      "T": 17.45,
+      "T": 18.45,
       "divisions": 40,
-      "progress_pct": 43.6,
-      "star_pct": 1.91,
+      "progress_pct": 46.1,
+      "star_pct": 1.16,
       "halted": false,
       "mode": "normal",
       "daily": [
@@ -529,11 +533,15 @@
         {
           "d": "2026-11-24",
           "nav_pct": -7.26
+        },
+        {
+          "d": "2026-11-25",
+          "nav_pct": -7.75
         }
       ],
       "history": [],
-      "price_vs_avg_pct": -28.48,
-      "star_price_gap_pct": 42.5
+      "price_vs_avg_pct": -27.69,
+      "star_price_gap_pct": 39.91
     }
   ]
 }
